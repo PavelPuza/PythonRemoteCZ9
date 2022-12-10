@@ -1,3 +1,5 @@
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.mixins import LoginRequiredMixin
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 
@@ -22,6 +24,7 @@ class RoomsView(ListView):
     template_name = 'base/rooms.html'
     model = Room
 
+@login_required
 def room(request, pk):
     LOGGER.warning(request.method)
     room = Room.objects.get(id=pk)
@@ -42,11 +45,16 @@ def room(request, pk):
     context = {'messages': messages, 'room': room}
     return render(request, template_name='base/room.html', context=context)
 
-class RoomCreateView(CreateView):
+class RoomCreateView(LoginRequiredMixin, CreateView):
     template_name = 'base/room_form.html'
     extra_context = {'title' : 'CREATE !!!'}
     form_class = RoomForm
     success_url = reverse_lazy('rooms')
+
+    def form_valid(self, form):
+        result = super().form_valid(form)
+        LOGGER.warning(form.cleaned_data)
+        return result
 
 class RoomUpdateView(UpdateView):
     template_name = 'base/room_form.html'
