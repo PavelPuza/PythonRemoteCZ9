@@ -1,5 +1,6 @@
 from django.contrib.auth.decorators import login_required, permission_required
 from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin, UserPassesTestMixin
+from django.db.models import Q
 from django.http import HttpResponse
 from django.shortcuts import render, redirect
 
@@ -15,7 +16,20 @@ def hello(request):
     s = request.GET.get('s', '')
     return HttpResponse(f'Ahoj {s}!!')
 
-#def rooms(request):
+
+@login_required
+@permission_required(['base.view_room'])
+def search(request):
+    q = request.GET.get('q', '')
+    rooms = Room.objects.filter(
+        Q(name__icontains=q) |
+        Q(description__incontains=q)
+    )
+    context = {'object_list': rooms}
+    return render(request, 'base/rooms.html', context)
+
+
+# def rooms(request):
 #    rooms = Room.objects.all()
 #    context = {'rooms': rooms}
 #    return render(request, template_name='base/rooms.html', context=context)
@@ -24,6 +38,7 @@ class RoomsView(PermissionRequiredMixin, LoginRequiredMixin, ListView):
     template_name = 'base/rooms.html'
     model = Room
     permission_required = 'base.view_room'
+
 
 @login_required
 @permission_required(['base.view_room', 'base.view_message'])
@@ -43,14 +58,15 @@ def room(request, pk):
             room.save()
         return redirect('room', pk=pk)
 
-    #GET
+    # GET
     messages = room.message_set.all()
     context = {'messages': messages, 'room': room}
     return render(request, template_name='base/room.html', context=context)
 
+
 class RoomCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView):
     template_name = 'base/room_form.html'
-    extra_context = {'title' : 'CREATE !!!'}
+    extra_context = {'title': 'CREATE !!!'}
     form_class = RoomForm
     success_url = reverse_lazy('rooms')
     permission_required = 'base.add_room'
@@ -60,9 +76,10 @@ class RoomCreateView(PermissionRequiredMixin, LoginRequiredMixin, CreateView):
         LOGGER.warning(form.cleaned_data)
         return result
 
+
 class RoomUpdateView(PermissionRequiredMixin, LoginRequiredMixin, UpdateView):
     template_name = 'base/room_form.html'
-    extra_context = {'title' : 'UPDATE !!!'}
+    extra_context = {'title': 'UPDATE !!!'}
     form_class = RoomForm
     success_url = reverse_lazy('rooms')
     model = Room
@@ -74,13 +91,13 @@ class StaffRequiredMixin(UserPassesTestMixin):
     def test_func(self):
         return self.request.user.is_staff
 
+
 class RoomDeleteView(StaffRequiredMixin, PermissionRequiredMixin, LoginRequiredMixin, DeleteView):
     template_name = 'base/room_confirm_delete.html'
     model = Room
     success_url = reverse_lazy('rooms')
     permission_required = 'base.delete_room'
 
+
 def handler403(request, exception):
     return render(request, '403.html', status=404)
-
-
